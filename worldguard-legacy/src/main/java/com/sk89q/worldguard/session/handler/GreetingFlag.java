@@ -28,6 +28,9 @@ import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.session.MoveType;
 import com.sk89q.worldguard.session.Session;
+import com.sk89q.worldguard.session.handler.Handler;
+
+import woesh.utils.WoeshUtils;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -55,11 +58,22 @@ public class GreetingFlag extends Handler {
 
         for (String message : messages) {
             if (!lastMessageStack.contains(message)) {
-                String effective = WorldGuard.getInstance().getPlatform().replaceColorMacros(message);
+                // WoeshEdit - Use colorcodes as supported before WorldGuard 7.0.0 and add plot prefix.
+//                String effective = WorldGuard.getInstance().getPlatform().replaceColorMacros(message);
+                String effective = WoeshUtils.replaceColorMacros("&8[&7Plot&8]&r" + message);
+                // WoeshEdit end.
                 effective = WorldGuard.getInstance().getPlatform().replaceMacros(player, effective);
-                for (String mess : effective.replaceAll("\\\\n", "\n").split("\\n")) {
-                    player.printRaw(mess);
+                // WoeshEdit - Replaced chat notification with above-actionbar notification.
+//                for (String mess : effective.replaceAll("\\\\n", "\n").split("\\n")) {
+//                    player.printRaw(mess);
+//                }
+                final String finalMessage = effective.replaceAll("\\\\n", "\n");
+                if(!woesh.utils.WoeshUtils.sendActionBarMessage(player, finalMessage)) {
+                    for(String mess : finalMessage.split("\\n")) {
+                        player.printRaw(mess);
+                    }
                 }
+                // WoeshEdit end.
                 break;
             }
         }
