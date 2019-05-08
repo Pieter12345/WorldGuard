@@ -189,4 +189,10 @@ public class BukkitPlayer extends com.sk89q.worldedit.bukkit.BukkitPlayer implem
     public boolean hasPermission(String perm) {
         return plugin.hasPermission(getPlayer(), perm);
     }
+
+    // WoeshEdit - Add method.
+    @Override
+    public boolean sendActionbarMessage(String message) {
+        return com.sk89q.worldguard.bukkit.util.WoeshUtils.sendActionBarMessage(this.getPlayer(), message);
+    }
 }

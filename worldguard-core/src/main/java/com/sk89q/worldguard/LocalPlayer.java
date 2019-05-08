@@ -207,4 +207,13 @@ public interface LocalPlayer extends Player, RegionAssociable {
      */
     @Beta
     void sendTitle(String title, String subtitle);
+
+    // WoeshEdit - Add method.
+    /**
+     * Sends an above-hotbar message to this player.
+     *
+     * @param message the message to display
+     * @return {@code true} if the message was sent, {@code false} if something went wrong while sending the message.
+     */
+    boolean sendActionbarMessage(String message);
 }

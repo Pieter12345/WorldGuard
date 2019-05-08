@@ -264,4 +264,10 @@ public class TestPlayer extends AbstractPlayerActor implements LocalPlayer {
     public <T> T getFacet(Class<? extends T> cls) {
         return null;
     }
+
+    // WoeshEdit - Add method.
+    @Override
+    public boolean sendActionbarMessage(String message) {
+        return false;
+    }
 }
