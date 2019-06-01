@@ -32,7 +32,6 @@ import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.util.SpongeUtil;
 import org.bukkit.Material;
-import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -42,9 +41,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockFormEvent;
 import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
 import org.bukkit.event.block.BlockPhysicsEvent;
@@ -54,6 +55,8 @@ import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
 
 /**
  * The listener for block events.
@@ -86,7 +89,7 @@ public class WorldGuardBlockListener implements Listener {
      * @param world The world to get the configuration for.
      * @return The configuration for {@code world}
      */
-    protected WorldConfiguration getWorldConfig(World world) {
+    private WorldConfiguration getWorldConfig(World world) {
         return WorldGuard.getInstance().getPlatform().getGlobalStateManager().get(BukkitAdapter.adapt(world));
     }
 
@@ -96,7 +99,7 @@ public class WorldGuardBlockListener implements Listener {
      * @param player The player to get the wold from
      * @return The {@link BukkitWorldConfiguration} for the player's world
      */
-    protected WorldConfiguration getWorldConfig(Player player) {
+    private WorldConfiguration getWorldConfig(Player player) {
         return getWorldConfig(player.getWorld());
     }
 
@@ -109,10 +112,12 @@ public class WorldGuardBlockListener implements Listener {
         WorldConfiguration wcfg = getWorldConfig(player);
 
         if (!wcfg.itemDurability) {
-            ItemStack held = player.getItemInHand();
-            if (held.getType() != Material.AIR) {
-                held.setDurability((short) 0);
-                player.setItemInHand(held);
+            ItemStack held = player.getInventory().getItemInMainHand();
+            ItemMeta meta = held.getItemMeta();
+            if (meta != null) {
+                ((Damageable) meta).setDamage(0);
+                held.setItemMeta(meta);
+                player.getInventory().setItemInMainHand(held);
             }
         }
     }
@@ -170,7 +175,7 @@ public class WorldGuardBlockListener implements Listener {
 
         // Check the fluid block (from) whether it is air.
         // If so and the target block is protected, cancel the event
-        if (wcfg.preventWaterDamage.size() > 0) {
+        if (!wcfg.preventWaterDamage.isEmpty()) {
             Material targetId = blockTo.getType();
 
             if ((isAir || isWater) &&
@@ -180,7 +185,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (wcfg.allowedLavaSpreadOver.size() > 0 && isLava) {
+        if (!wcfg.allowedLavaSpreadOver.isEmpty() && isLava) {
             Material targetId = blockTo.getRelative(0, -1, 0).getType();
 
             if (!wcfg.allowedLavaSpreadOver.contains(BukkitAdapter.asBlockType(targetId).getId())) {
@@ -254,7 +259,7 @@ public class WorldGuardBlockListener implements Listener {
             return;
         }
 
-        if (wcfg.disableFireSpreadBlocks.size() > 0 && isFireSpread) {
+        if (!wcfg.disableFireSpreadBlocks.isEmpty() && isFireSpread) {
             int x = block.getX();
             int y = block.getY();
             int z = block.getZ();
@@ -325,7 +330,7 @@ public class WorldGuardBlockListener implements Listener {
             return;
         }
 
-        if (wcfg.disableFireSpreadBlocks.size() > 0) {
+        if (!wcfg.disableFireSpreadBlocks.isEmpty()) {
             Block block = event.getBlock();
 
             if (wcfg.disableFireSpreadBlocks.contains(BukkitAdapter.asBlockType(block.getType()).getId())) {
@@ -559,9 +564,9 @@ public class WorldGuardBlockListener implements Listener {
             return;
         }
 
-        Material fromType = event.getSource().getType();
+        Material newType = event.getNewState().getType(); // craftbukkit randomly gives AIR as event.getSource even if that block is not air
 
-        if (Materials.isMushroom(fromType)) {
+        if (Materials.isMushroom(newType)) {
             if (wcfg.disableMushroomSpread) {
                 event.setCancelled(true);
                 return;
@@ -573,7 +578,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (fromType == Material.GRASS_BLOCK) {
+        if (newType == Material.GRASS_BLOCK) {
             if (wcfg.disableGrassGrowth) {
                 event.setCancelled(true);
                 return;
@@ -585,7 +590,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (fromType == Material.MYCELIUM) {
+        if (newType == Material.MYCELIUM) {
             if (wcfg.disableMyceliumSpread) {
                 event.setCancelled(true);
                 return;
@@ -598,7 +603,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (fromType == Material.VINE || fromType == Material.KELP) {
+        if (newType == Material.VINE || newType == Material.KELP) {
             if (wcfg.disableVineGrowth) {
                 event.setCancelled(true);
                 return;
@@ -606,6 +611,25 @@ public class WorldGuardBlockListener implements Listener {
 
             if (wcfg.useRegions && !StateFlag.test(WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery()
                     .queryState(BukkitAdapter.adapt(event.getBlock().getLocation()), (RegionAssociable) null, Flags.VINE_GROWTH))) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockGrow(BlockGrowEvent event) {
+        WorldConfiguration wcfg = getWorldConfig(event.getBlock().getWorld());
+        final Material type = event.getBlock().getType();
+
+        if (Materials.isCrop(type)) {
+            if (wcfg.disableCropGrowth) {
+                event.setCancelled(false);
+                return;
+            }
+
+            if (wcfg.useRegions && !StateFlag.test(WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery()
+                .queryState(BukkitAdapter.adapt(event.getBlock().getLocation()), (RegionAssociable) null, Flags.CROP_GROWTH))) {
                 event.setCancelled(true);
                 return;
             }
@@ -658,6 +682,21 @@ public class WorldGuardBlockListener implements Listener {
                 event.setCancelled(true);
                 return;
             }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        ConfigurationManager cfg = WorldGuard.getInstance().getPlatform().getGlobalStateManager();
+
+        if (cfg.activityHaltToggle) {
+            event.setCancelled(true);
+            return;
+        }
+
+        WorldConfiguration wcfg = getWorldConfig(event.getBlock().getWorld());
+        if (wcfg.blockOtherExplosions) {
+            event.setCancelled(true);
         }
     }
 

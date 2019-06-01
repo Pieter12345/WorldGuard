@@ -31,7 +31,6 @@ import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -115,6 +114,7 @@ public final class Flags {
     public static final StateFlag GRASS_SPREAD = register(new StateFlag("grass-growth", true));
     public static final StateFlag MYCELIUM_SPREAD = register(new StateFlag("mycelium-spread", true));
     public static final StateFlag VINE_GROWTH = register(new StateFlag("vine-growth", true));
+    public static final StateFlag CROP_GROWTH = register(new StateFlag("crop-growth", true));
     public static final StateFlag SOIL_DRY = register(new StateFlag("soil-dry", true));
     public static final StateFlag WATER_FLOW = register(new StateFlag("water-flow", true));
     public static final StateFlag LAVA_FLOW = register(new StateFlag("lava-flow", true));
@@ -186,11 +186,6 @@ public final class Flags {
         WorldGuard.getInstance().getFlagRegistry().register(flag);
         INBUILT_FLAGS_LIST.add(flag.getName());
         return flag;
-    }
-
-    @Nullable
-    public static Flag<?> get(final String id) {
-        return WorldGuard.getInstance().getFlagRegistry().get(id);
     }
 
     /**
