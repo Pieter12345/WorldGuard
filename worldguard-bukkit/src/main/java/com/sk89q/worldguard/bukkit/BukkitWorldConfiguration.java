@@ -179,7 +179,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         blockTNTBlockDamage = getBoolean("ignition.block-tnt-block-damage", false);
         blockLighter = getBoolean("ignition.block-lighter", false);
 
-        preventLavaFire = getBoolean("fire.disable-lava-fire-spread", true);
+        preventLavaFire = getBoolean("fire.disable-lava-fire-spread", false);
         disableFireSpread = getBoolean("fire.disable-all-fire-spread", false);
         disableFireSpreadBlocks = new HashSet<>(convertLegacyBlocks(getStringList("fire.disable-fire-spread-blocks", null)));
         allowedLavaSpreadOver = new HashSet<>(convertLegacyBlocks(getStringList("fire.lava-spread-blocks", null)));
@@ -231,6 +231,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         disableThunder = getBoolean("weather.disable-thunderstorm", false);
         disableWeather = getBoolean("weather.disable-weather", false);
         disablePigZap = getBoolean("weather.disable-pig-zombification", false);
+        disableVillagerZap = getBoolean("weather.disable-villager-witchification", false);
         disableCreeperPower = getBoolean("weather.disable-powered-creepers", false);
         alwaysRaining = getBoolean("weather.always-raining", false);
         alwaysThundering = getBoolean("weather.always-thundering", false);

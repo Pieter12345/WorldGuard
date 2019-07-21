@@ -17,24 +17,19 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.sk89q.worldguard.util.report;
+package com.sk89q.worldguard.bukkit.listener;
 
-import com.sk89q.worldedit.util.report.DataReport;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 
-/**
- * Reports on a region.
- */
-public class RegionReport extends DataReport {
+import javax.annotation.Nullable;
 
-    public RegionReport(ProtectedRegion region) {
-        super("Region: " + region.getId());
+final class BlockStateAsBlockFunction {
+    private BlockStateAsBlockFunction() {
+    }
 
-        append("Type", region.getType());
-        append("Priority", region.getPriority());
-        append("Owners", region.getOwners());
-        append("Members", region.getMembers());
-        append("Flags", region.getFlags());
+    static Block apply(@Nullable BlockState blockState) {
+        return blockState != null ? blockState.getBlock() : null;
     }
 
 }
