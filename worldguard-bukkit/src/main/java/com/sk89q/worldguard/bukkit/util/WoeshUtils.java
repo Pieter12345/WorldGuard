@@ -16,11 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-/*
- * Specific to this file:
- * Copyright (c) 2016 P.J.S. Kools
- * All rights reserved.
- */
 
 package com.sk89q.worldguard.bukkit.util;
 
@@ -34,6 +29,11 @@ import org.bukkit.entity.Player;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.bukkit.BukkitPlayer;
 
+/**
+ * WoeshUtils class.
+ * Custom utility class for WorldGuard.
+ * @author P.J.S. Kools
+ */
 public abstract class WoeshUtils {
 
     private static boolean isCompatible = true;
