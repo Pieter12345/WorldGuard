@@ -216,4 +216,9 @@ public interface LocalPlayer extends Player, RegionAssociable {
      * @return {@code true} if the message was sent, {@code false} if something went wrong while sending the message.
      */
     boolean sendActionbarMessage(String message);
+
+    /**
+     * Clears fall distance.
+     */
+    void resetFallDistance();
 }

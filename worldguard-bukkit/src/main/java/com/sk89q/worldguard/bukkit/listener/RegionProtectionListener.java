@@ -41,10 +41,7 @@ import com.sk89q.worldguard.bukkit.util.InteropUtils;
 import com.sk89q.worldguard.bukkit.util.Materials;
 import com.sk89q.worldguard.commands.CommandUtils;
 import com.sk89q.worldguard.config.WorldConfiguration;
-import com.sk89q.worldguard.domains.Association;
 import com.sk89q.worldguard.internal.permission.RegionPermissionModel;
-import com.sk89q.worldguard.protection.DelayedRegionOverlapAssociation;
-import com.sk89q.worldguard.protection.association.Associables;
 import com.sk89q.worldguard.protection.association.RegionAssociable;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
@@ -53,7 +50,6 @@ import com.sk89q.worldguard.protection.regions.RegionQuery;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -149,26 +145,6 @@ public class RegionProtectionListener extends AbstractListener {
             return !pvp && new RegionPermissionModel(localPlayer).mayIgnoreRegionProtection(BukkitAdapter.adapt(world));
         } else {
             return false;
-        }
-    }
-
-    private RegionAssociable createRegionAssociable(Cause cause) {
-        Object rootCause = cause.getRootCause();
-
-        if (!cause.isKnown()) {
-            return Associables.constant(Association.NON_MEMBER);
-        } else if (rootCause instanceof Player) {
-            return getPlugin().wrapPlayer((Player) rootCause);
-        } else if (rootCause instanceof OfflinePlayer) {
-            return getPlugin().wrapOfflinePlayer((OfflinePlayer) rootCause);
-        } else if (rootCause instanceof Entity) {
-            RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-            return new DelayedRegionOverlapAssociation(query, BukkitAdapter.adapt(((Entity) rootCause).getLocation()));
-        } else if (rootCause instanceof Block) {
-            RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-            return new DelayedRegionOverlapAssociation(query, BukkitAdapter.adapt(((Block) rootCause).getLocation()));
-        } else {
-            return Associables.constant(Association.NON_MEMBER);
         }
     }
 
@@ -419,7 +395,7 @@ public class RegionProtectionListener extends AbstractListener {
         final Entity entity = event.getEntity();
         final EntityType type = entity.getType();
         if (Entities.isHostile(entity) || Entities.isAmbient(entity)
-                || Entities.isNPC(entity)) {
+                || Entities.isNPC(entity) || entity instanceof Player) {
             canUse = event.getRelevantFlags().isEmpty() || query.queryState(BukkitAdapter.adapt(target), associable, combine(event)) != State.DENY;
             what = "use that";
         /* Paintings, item frames, etc. */
@@ -439,10 +415,6 @@ public class RegionProtectionListener extends AbstractListener {
         } else if (Entities.isRiddenOnUse(entity)) {
             canUse = query.testBuild(BukkitAdapter.adapt(target), associable, combine(event, Flags.RIDE, Flags.INTERACT));
             what = "ride that";
-
-        } else if (entity instanceof Player && event.getCause().getRootCause() instanceof Player) {
-            canUse = query.testBuild(BukkitAdapter.adapt(target), associable, combine(event, Flags.INTERACT, Flags.PVP));
-            what = "use that";
 
         /* Everything else */
         } else {

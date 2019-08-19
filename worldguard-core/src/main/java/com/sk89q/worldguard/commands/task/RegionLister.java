@@ -22,7 +22,7 @@ package com.sk89q.worldguard.commands.task;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.sk89q.minecraft.util.commands.CommandException;
-import com.sk89q.squirrelid.Profile;
+import com.sk89q.worldguard.util.profile.Profile;
 import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldedit.util.formatting.component.PaginationBox;
 import com.sk89q.worldedit.util.formatting.text.Component;
@@ -176,7 +176,7 @@ public class RegionLister implements Callable<Integer> {
 
         RegionPermissionModel perms = sender.isPlayer() ? new RegionPermissionModel(sender) : null;
         String title = ownerMatcher == null ? "Regions" : "Regions for " + ownerMatcher.getName();
-        String cmd = "/rg list -w " + world
+        String cmd = "/rg list -w \"" + world + "\""
                 + (playerName != null ? " -p " + playerName : "")
                 + (nameOnly ? " -n" : "")
                 + " %page%";
@@ -259,13 +259,13 @@ public class RegionLister implements Callable<Integer> {
                 builder.append(TextComponent.space().append(TextComponent.of("[Info]", TextColor.GRAY)
                         .hoverEvent(HoverEvent.of(HoverEvent.Action.SHOW_TEXT, TextComponent.of("Click for info")))
                         .clickEvent(ClickEvent.of(ClickEvent.Action.RUN_COMMAND,
-                                "/rg info -w " + world + " " + entry.region.getId()))));
+                                "/rg info -w \"" + world + "\" " + entry.region.getId()))));
             }
             if (perms != null && entry.region.getFlag(Flags.TELE_LOC) != null && perms.mayTeleportTo(entry.region)) {
                 builder.append(TextComponent.space().append(TextComponent.of("[TP]", TextColor.GRAY)
                         .hoverEvent(HoverEvent.of(HoverEvent.Action.SHOW_TEXT, TextComponent.of("Click to teleport")))
                         .clickEvent(ClickEvent.of(ClickEvent.Action.RUN_COMMAND,
-                                "/rg tp -w " + world + " " + entry.region.getId()))));
+                                "/rg tp -w \"" + world + "\" " + entry.region.getId()))));
             }
             return builder.build();
         }

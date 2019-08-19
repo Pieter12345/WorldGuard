@@ -70,6 +70,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
     public Set<PotionEffectType> blockPotions;
     public TargetMatcherSet allowAllInteract;
     public TargetMatcherSet blockUseAtFeet;
+    public boolean usePaperEntityOrigin;
     /* Configuration data end */
 
     /**
@@ -144,6 +145,8 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         blockUseAtFeet = getTargetMatchers("event-handling.emit-block-use-at-feet");
         ignoreHopperMoveEvents = getBoolean("event-handling.ignore-hopper-item-move-events", false);
 
+        usePaperEntityOrigin = getBoolean("regions.use-paper-entity-origin", false);
+
         itemDurability = getBoolean("protection.item-durability", true);
         removeInfiniteStacks = getBoolean("protection.remove-infinite-stacks", false);
         disableExpDrops = getBoolean("protection.disable-xp-orb-drops", false);
@@ -216,6 +219,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         teleportOnSuffocation = getBoolean("player-damage.teleport-on-suffocation", false);
         disableVoidDamage = getBoolean("player-damage.disable-void-damage", false);
         teleportOnVoid = getBoolean("player-damage.teleport-on-void-falling", false);
+        safeFallOnVoid = getBoolean("player-damage.reset-fall-on-void-teleport", false);
         disableExplosionDamage = getBoolean("player-damage.disable-explosion-damage", false);
         disableMobDamage = getBoolean("player-damage.disable-mob-damage", false);
         disableDeathMessages = getBoolean("player-damage.disable-death-messages", false);

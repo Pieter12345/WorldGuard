@@ -16,3 +16,32 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
+package com.sk89q.worldguard.protection.flags;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
+/**
+ * Stores an Number.
+ */
+public abstract class NumberFlag<T extends Number> extends Flag<T> {
+
+    private static final Number[] EMPTY_NUMBER_ARRAY = new Number[0];
+    private Number[] suggestions = EMPTY_NUMBER_ARRAY;
+
+    protected NumberFlag(String name, RegionGroup defaultGroup) {
+        super(name, defaultGroup);
+    }
+
+    protected NumberFlag(String name) {
+        super(name);
+    }
+
+    public void setSuggestedValues(Number[] values) {
+        this.suggestions = checkNotNull(values);
+    }
+
+    public Number[] getSuggestedValues() {
+        return suggestions;
+    }
+}

@@ -69,8 +69,11 @@ import org.bukkit.entity.AreaEffectCloud;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.FallingBlock;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.Item;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Painting;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.event.Cancellable;
@@ -136,11 +139,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import javax.annotation.Nullable;
 
 public class EventAbstractionListener extends AbstractListener {
 
@@ -264,12 +266,12 @@ public class EventAbstractionListener extends AbstractListener {
         }
 
         // Fire two events: one as BREAK and one as PLACE
-        if (event.getTo() != Material.AIR && event.getBlock().getType() != Material.AIR) {
+        if (to != Material.AIR && block.getType() != Material.AIR) {
             if (!Events.fireToCancel(event, new BreakBlockEvent(event, create(entity), block))) {
                 Events.fireToCancel(event, new PlaceBlockEvent(event, create(entity), block.getLocation(), to));
             }
         } else {
-            if (event.getTo() == Material.AIR) {
+            if (to == Material.AIR) {
                 // Track the source so later we can create a proper chain of causes
                 if (entity instanceof FallingBlock) {
                     Cause.trackParentCause(entity, block);
@@ -278,17 +280,19 @@ public class EventAbstractionListener extends AbstractListener {
                     Events.fireToCancel(event, new SpawnEntityEvent(event, create(block), entity));
                 } else {
                     entityBreakBlockDebounce.debounce(
-                            event.getBlock(), event.getEntity(), event, new BreakBlockEvent(event, create(entity), event.getBlock()));
+                            block, event.getEntity(), event, new BreakBlockEvent(event, create(entity), block));
                 }
             } else {
                 boolean wasCancelled = event.isCancelled();
                 Cause cause = create(entity);
 
-                Events.fireToCancel(event, new PlaceBlockEvent(event, cause, event.getBlock().getLocation(), to));
+                Events.fireToCancel(event, new PlaceBlockEvent(event, cause, block.getLocation(), to));
 
                 if (event.isCancelled() && !wasCancelled && entity instanceof FallingBlock) {
                     FallingBlock fallingBlock = (FallingBlock) entity;
-                    ItemStack itemStack = new ItemStack(fallingBlock.getBlockData().getMaterial(), 1);
+                    final Material material = fallingBlock.getBlockData().getMaterial();
+                    if (!material.isItem()) return;
+                    ItemStack itemStack = new ItemStack(material, 1);
                     Item item = block.getWorld().dropItem(fallingBlock.getLocation(), itemStack);
                     item.setVelocity(new Vector());
                     if (Events.fireAndTestCancel(new SpawnEntityEvent(event, create(block, entity), item))) {
@@ -417,8 +421,8 @@ public class EventAbstractionListener extends AbstractListener {
                     // Only fire events for blocks that are modified when right clicked
                     final boolean hasItemInteraction = item != null && isItemAppliedToBlock(item, clicked)
                             && event.getAction() == Action.RIGHT_CLICK_BLOCK;
-                    modifiesWorld = isBlockModifiedOnClick(clicked, event.getAction() == Action.RIGHT_CLICK_BLOCK)
-                            || hasItemInteraction;
+                    modifiesWorld = hasItemInteraction
+                            || isBlockModifiedOnClick(clicked, event.getAction() == Action.RIGHT_CLICK_BLOCK);
 
                     if (Events.fireAndTestCancel(new UseBlockEvent(event, cause, clicked).setAllowed(!modifiesWorld))) {
                         event.setUseInteractedBlock(Result.DENY);
@@ -592,7 +596,7 @@ public class EventAbstractionListener extends AbstractListener {
         Material toType = to.getType();
 
         // Liquids pass this event when flowing to solid blocks
-        if (toType.isSolid() && Materials.isLiquid(fromType)) {
+        if (Materials.isLiquid(fromType) && toType.isSolid()) {
             return;
         }
 
@@ -651,6 +655,15 @@ public class EventAbstractionListener extends AbstractListener {
             if (event.isCancelled() && remover instanceof Player) {
                 playDenyEffect((Player) remover, event.getEntity().getLocation());
             }
+        } else if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION){
+            DestroyEntityEvent destroyEntityEvent = new DestroyEntityEvent(event, Cause.unknown(), event.getEntity());
+            destroyEntityEvent.getRelevantFlags().add(Flags.OTHER_EXPLOSION);
+            if (event.getEntity() instanceof ItemFrame) {
+                destroyEntityEvent.getRelevantFlags().add(Flags.ENTITY_ITEM_FRAME_DESTROY);
+            } else if (event.getEntity() instanceof Painting) {
+                destroyEntityEvent.getRelevantFlags().add(Flags.ENTITY_PAINTING_DESTROY);
+            }
+            Events.fireToCancel(event, destroyEntityEvent);
         }
     }
 
@@ -754,7 +767,11 @@ public class EventAbstractionListener extends AbstractListener {
         } else if (event instanceof EntityDamageByEntityEvent) {
             EntityDamageByEntityEvent entityEvent = (EntityDamageByEntityEvent) event;
             Entity damager = entityEvent.getDamager();
-            Events.fireToCancel(event, new DamageEntityEvent(event, create(damager), event.getEntity()));
+            final DamageEntityEvent eventToFire = new DamageEntityEvent(event, create(damager), event.getEntity());
+            if (damager instanceof Firework) {
+                eventToFire.getRelevantFlags().add(Flags.FIREWORK_DAMAGE);
+            }
+            Events.fireToCancel(event, eventToFire);
 
             // Item use event with the item in hand
             // Older blacklist handler code used this, although it suffers from

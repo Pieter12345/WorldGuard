@@ -24,14 +24,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.sk89q.minecraft.util.commands.CommandException;
-import com.sk89q.squirrelid.cache.HashMapCache;
-import com.sk89q.squirrelid.cache.ProfileCache;
-import com.sk89q.squirrelid.cache.SQLiteCache;
-import com.sk89q.squirrelid.resolver.BukkitPlayerService;
-import com.sk89q.squirrelid.resolver.CacheForwardingService;
-import com.sk89q.squirrelid.resolver.CombinedProfileService;
-import com.sk89q.squirrelid.resolver.HttpRepositoryService;
-import com.sk89q.squirrelid.resolver.ProfileService;
+import com.sk89q.worldguard.util.profile.cache.HashMapCache;
+import com.sk89q.worldguard.util.profile.cache.ProfileCache;
+import com.sk89q.worldguard.util.profile.cache.SQLiteCache;
+import com.sk89q.worldguard.util.profile.resolver.ProfileService;
 import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldedit.util.task.SimpleSupervisor;
 import com.sk89q.worldedit.util.task.Supervisor;
@@ -77,23 +73,20 @@ public final class WorldGuard {
     }
 
     public void setup() {
-        executorService = MoreExecutors.listeningDecorator(EvenMoreExecutors.newBoundedCachedThreadPool(0, 1, 20));
+        executorService = MoreExecutors.listeningDecorator(EvenMoreExecutors.newBoundedCachedThreadPool(0, 1, 20,
+                "WorldGuard Task Executor - %s"));
 
         File cacheDir = new File(getPlatform().getConfigDir().toFile(), "cache");
         cacheDir.mkdirs();
 
         try {
             profileCache = new SQLiteCache(new File(cacheDir, "profiles.sqlite"));
-        } catch (IOException e) {
-            logger.log(Level.WARNING, "Failed to initialize SQLite profile cache");
+        } catch (IOException | UnsatisfiedLinkError ignored) {
+            logger.log(Level.WARNING, "Failed to initialize SQLite profile cache. Cache is memory-only.");
             profileCache = new HashMapCache();
         }
 
-        profileService = new CacheForwardingService(
-                new CombinedProfileService(
-                        BukkitPlayerService.getInstance(),
-                        HttpRepositoryService.forMinecraft()),
-                profileCache);
+        profileService = getPlatform().createProfileService(profileCache);
 
         getPlatform().load();
     }

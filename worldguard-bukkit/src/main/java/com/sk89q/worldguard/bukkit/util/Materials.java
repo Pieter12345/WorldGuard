@@ -92,6 +92,7 @@ public final class Materials {
         ENTITY_ITEMS.put(EntityType.SPLASH_POTION, Material.POTION);
         ENTITY_ITEMS.put(EntityType.EGG, Material.EGG);
         ENTITY_ITEMS.put(EntityType.ARMOR_STAND, Material.ARMOR_STAND);
+        ENTITY_ITEMS.put(EntityType.ENDER_CRYSTAL, Material.END_CRYSTAL);
 
         MATERIAL_FLAGS.put(Material.AIR, 0);
         MATERIAL_FLAGS.put(Material.STONE, 0);
@@ -750,7 +751,7 @@ public final class Materials {
             MATERIAL_FLAGS.put(flower, 0);
         }
         for (Material bed : Tag.BEDS.getValues()) {
-            MATERIAL_FLAGS.put(bed, 0);
+            MATERIAL_FLAGS.put(bed, MODIFIED_ON_RIGHT);
         }
         for (Material musicDisc : Tag.ITEMS_MUSIC_DISCS.getValues()) {
             MATERIAL_FLAGS.put(musicDisc, 0);

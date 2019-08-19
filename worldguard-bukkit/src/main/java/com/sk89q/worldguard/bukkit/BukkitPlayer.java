@@ -120,7 +120,8 @@ public class BukkitPlayer extends com.sk89q.worldedit.bukkit.BukkitPlayer implem
 
     @Override
     public WeatherType getPlayerWeather() {
-        return null;
+        org.bukkit.WeatherType playerWeather = getPlayer().getPlayerWeather();
+        return playerWeather == null ? null : playerWeather == org.bukkit.WeatherType.CLEAR ? WeatherTypes.CLEAR : WeatherTypes.RAIN;
     }
 
     @Override
@@ -171,6 +172,11 @@ public class BukkitPlayer extends com.sk89q.worldedit.bukkit.BukkitPlayer implem
     @Override
     public void sendTitle(String title, String subtitle) {
         getPlayer().sendTitle(title, subtitle, -1, -1, -1);
+    }
+
+    @Override
+    public void resetFallDistance() {
+        getPlayer().setFallDistance(0);
     }
 
     @Override
