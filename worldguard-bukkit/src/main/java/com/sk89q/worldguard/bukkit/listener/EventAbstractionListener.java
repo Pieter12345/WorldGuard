@@ -35,6 +35,7 @@ import com.sk89q.worldguard.bukkit.event.entity.DestroyEntityEvent;
 import com.sk89q.worldguard.bukkit.event.entity.SpawnEntityEvent;
 import com.sk89q.worldguard.bukkit.event.entity.UseEntityEvent;
 import com.sk89q.worldguard.bukkit.event.inventory.UseItemEvent;
+import com.sk89q.worldguard.bukkit.internal.WGMetadata;
 import com.sk89q.worldguard.bukkit.listener.debounce.BlockPistonExtendKey;
 import com.sk89q.worldguard.bukkit.listener.debounce.BlockPistonRetractKey;
 import com.sk89q.worldguard.bukkit.listener.debounce.EventDebounce;
@@ -94,6 +95,7 @@ import org.bukkit.event.block.BlockMultiPlaceEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.CauldronLevelChangeEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
@@ -270,14 +272,20 @@ public class EventAbstractionListener extends AbstractListener {
             boolean trample = fromType == Material.FARMLAND && toType == Material.DIRT;
             BreakBlockEvent breakDelagate = new BreakBlockEvent(event, cause, block);
             if (trample) {
+                breakDelagate.setSilent(true);
                 breakDelagate.getRelevantFlags().add(Flags.TRAMPLE_BLOCKS);
             }
-            if (!Events.fireToCancel(event, breakDelagate)) {
+            boolean denied;
+            if (!(denied = Events.fireToCancel(event, breakDelagate))) {
                 PlaceBlockEvent placeDelegate = new PlaceBlockEvent(event, cause, block.getLocation(), toType);
                 if (trample) {
+                    placeDelegate.setSilent(true);
                     placeDelegate.getRelevantFlags().add(Flags.TRAMPLE_BLOCKS);
                 }
-                Events.fireToCancel(event, placeDelegate);
+                denied = Events.fireToCancel(event, placeDelegate);
+            }
+            if (denied && entity instanceof Player) {
+                playDenyEffect((Player) entity, block.getLocation());
             }
         } else {
             if (toType == Material.AIR) {
@@ -296,16 +304,19 @@ public class EventAbstractionListener extends AbstractListener {
 
                 Events.fireToCancel(event, new PlaceBlockEvent(event, cause, block.getLocation(), toType));
 
-                if (event.isCancelled() && !wasCancelled && entity instanceof FallingBlock) {
-                    FallingBlock fallingBlock = (FallingBlock) entity;
-                    final Material material = fallingBlock.getBlockData().getMaterial();
-                    if (!material.isItem()) return;
-                    ItemStack itemStack = new ItemStack(material, 1);
-                    Item item = block.getWorld().dropItem(fallingBlock.getLocation(), itemStack);
-                    item.setVelocity(new Vector());
-                    if (Events.fireAndTestCancel(new SpawnEntityEvent(event, create(block, entity), item))) {
-                        item.remove();
+                if (entity instanceof FallingBlock) {
+                    if (event.isCancelled() && !wasCancelled) {
+                        FallingBlock fallingBlock = (FallingBlock) entity;
+                        final Material material = fallingBlock.getBlockData().getMaterial();
+                        if (!material.isItem()) return;
+                        ItemStack itemStack = new ItemStack(material, 1);
+                        Item item = block.getWorld().dropItem(fallingBlock.getLocation(), itemStack);
+                        item.setVelocity(new Vector());
+                        if (Events.fireAndTestCancel(new SpawnEntityEvent(event, create(block, entity), item))) {
+                            item.remove();
+                        }
                     }
+                    Cause.untrackParentCause(entity);
                 }
             }
         }
@@ -315,6 +326,9 @@ public class EventAbstractionListener extends AbstractListener {
     public void onEntityExplode(EntityExplodeEvent event) {
         Entity entity = event.getEntity();
         Events.fireBulkEventToCancel(event, new BreakBlockEvent(event, create(entity), event.getLocation().getWorld(), event.blockList(), Material.AIR));
+        if (entity instanceof Creeper) {
+            Cause.untrackParentCause(entity);
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -332,6 +346,7 @@ public class EventAbstractionListener extends AbstractListener {
                 Events.fireBulkEventToCancel(event, new BreakBlockEvent(event, cause, event.getBlock().getWorld(), blocks, Material.AIR));
                 if (originalSize != blocks.size()) {
                     event.setCancelled(true);
+                    return;
                 }
                 for (Block b : blocks) {
                     Location loc = b.getRelative(direction).getLocation();
@@ -351,17 +366,24 @@ public class EventAbstractionListener extends AbstractListener {
     public void onBlockPistonExtend(BlockPistonExtendEvent event) {
         EventDebounce.Entry entry = pistonExtendDebounce.getIfNotPresent(new BlockPistonExtendKey(event), event);
         if (entry != null) {
+            Cause cause = create(event.getBlock());
             List<Block> blocks = new ArrayList<>(event.getBlocks());
             int originalLength = blocks.size();
+            Events.fireBulkEventToCancel(event, new BreakBlockEvent(event, cause, event.getBlock().getWorld(), blocks, Material.AIR));
+            if (originalLength != blocks.size()) {
+                event.setCancelled(true);
+                return;
+            }
             BlockFace dir = event.getDirection();
             for (int i = 0; i < blocks.size(); i++) {
                 Block existing = blocks.get(i);
                 if (existing.getPistonMoveReaction() == PistonMoveReaction.MOVE
-                    || existing.getPistonMoveReaction() == PistonMoveReaction.PUSH_ONLY) {
+                    || existing.getPistonMoveReaction() == PistonMoveReaction.PUSH_ONLY
+                    || existing.getType() == Material.PISTON || existing.getType() == Material.STICKY_PISTON) {
                     blocks.set(i, existing.getRelative(dir));
                 }
             }
-            Events.fireBulkEventToCancel(event, new PlaceBlockEvent(event, create(event.getBlock()), event.getBlock().getWorld(), blocks, Material.STONE));
+            Events.fireBulkEventToCancel(event, new PlaceBlockEvent(event, cause, event.getBlock().getWorld(), blocks, Material.STONE));
             if (blocks.size() != originalLength) {
                 event.setCancelled(true);
             }
@@ -394,23 +416,37 @@ public class EventAbstractionListener extends AbstractListener {
         @Nullable ItemStack item = event.getItem();
         Block clicked = event.getClickedBlock();
         Block placed;
-        boolean silent = false;
         boolean modifiesWorld;
         Cause cause = create(player);
 
         switch (event.getAction()) {
             case PHYSICAL:
                 if (event.useInteractedBlock() != Result.DENY) {
+                    if (clicked.getType() == Material.FARMLAND || clicked.getType() == Material.TURTLE_EGG) {
+                        BreakBlockEvent breakDelagate = new BreakBlockEvent(event, cause, clicked);
+                        breakDelagate.setSilent(true);
+                        breakDelagate.getRelevantFlags().add(Flags.TRAMPLE_BLOCKS);
+                        boolean denied;
+                        if (!(denied = Events.fireToCancel(event, breakDelagate))) {
+                            PlaceBlockEvent placeDelegate = new PlaceBlockEvent(event, cause, clicked.getLocation(),
+                                    clicked.getType() == Material.FARMLAND ? Material.DIRT : clicked.getType());
+                            placeDelegate.setSilent(true);
+                            placeDelegate.getRelevantFlags().add(Flags.TRAMPLE_BLOCKS);
+                            denied = Events.fireToCancel(event, placeDelegate);
+                        }
+                        if (denied) {
+                            playDenyEffect(player, clicked.getLocation());
+                        }
+                        return;
+                    }
                     DelegateEvent firedEvent = new UseBlockEvent(event, cause, clicked).setAllowed(hasInteractBypass(clicked));
                     if (clicked.getType() == Material.REDSTONE_ORE) {
-                        silent = true;
+                        firedEvent.setSilent(true);
                     }
-                    if (clicked.getType() == Material.FARMLAND || clicked.getType() == Material.TURTLE_EGG) {
-                        silent = true;
-                        firedEvent.getRelevantFlags().add(Flags.TRAMPLE_BLOCKS);
-                    }
-                    firedEvent.setSilent(silent);
                     interactDebounce.debounce(clicked, event.getPlayer(), event, firedEvent);
+                    if (event.useInteractedBlock() == Result.DENY) {
+                        playDenyEffect(player, clicked.getLocation().add(0, 1, 0));
+                    }
                 }
                 break;
 
@@ -1013,6 +1049,14 @@ public class EventAbstractionListener extends AbstractListener {
         Events.fireToCancel(event, useEvent);
     }
 
+    @EventHandler(ignoreCancelled = true)
+    public void onCauldronLevelChange(CauldronLevelChangeEvent event) {
+        if (event.getEntity() == null) return;
+        interactDebounce.debounce(event.getBlock(), event.getEntity(), event,
+                new UseBlockEvent(event, create(event.getEntity()),
+                        event.getBlock()).setAllowed(hasInteractBypass(event.getBlock())));
+    }
+
     /**
      * Handle the right click of a block while an item is held.
      *
@@ -1065,6 +1109,13 @@ public class EventAbstractionListener extends AbstractListener {
         // Handle created spawn eggs
         if (item != null && Materials.isSpawnEgg(item.getType())) {
             Events.fireToCancel(event, new SpawnEntityEvent(event, cause, placed.getLocation().add(0.5, 0, 0.5), Materials.getEntitySpawnEgg(item.getType())));
+            return;
+        }
+
+        // handle water/lava placement
+        if (item != null && (item.getType() == Material.WATER_BUCKET || item.getType() == Material.LAVA_BUCKET)) {
+            Events.fireToCancel(event, new PlaceBlockEvent(event, cause, placed.getLocation(),
+                    item.getType() == Material.WATER_BUCKET ? Material.WATER : Material.LAVA));
             return;
         }
     }
