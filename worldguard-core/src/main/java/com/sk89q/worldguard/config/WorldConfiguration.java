@@ -158,6 +158,7 @@ public abstract class WorldConfiguration {
     public boolean disableEndermanGriefing;
     public boolean disableSnowmanTrails;
     public boolean disableSoilDehydration;
+    public boolean disableCoralBlockFade;
     public Set<String> allowedSnowFallOver;
     public boolean regionInvinciblityRemovesMobs;
     public boolean regionCancelEmptyChatEvents;
@@ -169,6 +170,7 @@ public abstract class WorldConfiguration {
     public boolean disableObsidianGenerators;
     public boolean strictEntitySpawn;
     public boolean ignoreHopperMoveEvents;
+    public boolean breakDeniedHoppers;
     protected Map<String, Integer> maxRegionCounts;
 
     /**

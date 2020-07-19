@@ -38,6 +38,7 @@ import com.sk89q.worldguard.session.Session;
 import com.sk89q.worldguard.session.handler.GameModeFlag;
 import com.sk89q.worldguard.util.Entities;
 import com.sk89q.worldguard.util.command.CommandFilter;
+import com.sk89q.worldguard.util.profile.Profile;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -147,6 +148,8 @@ public class WorldGuardPlayerListener implements Listener {
         }
 
         Events.fire(new ProcessPlayerEvent(player));
+        WorldGuard.getInstance().getExecutorService().submit(() ->
+            WorldGuard.getInstance().getProfileCache().put(new Profile(player.getUniqueId(), player.getName())));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -199,7 +202,8 @@ public class WorldGuardPlayerListener implements Listener {
             }
 
             if (!hostname.equals(hostKey)
-                    && !(cfg.hostKeysAllowFMLClients && hostname.equals(hostKey + "\u0000FML\u0000"))) {
+                    && !(cfg.hostKeysAllowFMLClients &&
+                            (hostname.equals(hostKey + "\u0000FML\u0000") || hostname.equals(hostKey + "\u0000FML2\u0000")))) {
                 event.disallow(PlayerLoginEvent.Result.KICK_OTHER,
                         "You did not join with the valid host key!");
                 log.warning("WorldGuard host key check: " +

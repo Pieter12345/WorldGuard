@@ -27,7 +27,6 @@ import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import com.sk89q.worldguard.bukkit.event.player.ProcessPlayerEvent;
 import com.sk89q.worldguard.session.AbstractSessionManager;
 import com.sk89q.worldguard.session.Session;
-import com.sk89q.worldguard.util.profile.Profile;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -62,8 +61,6 @@ public class BukkitSessionManager extends AbstractSessionManager implements Runn
         // Pre-load a session
         LocalPlayer player = WorldGuardPlugin.inst().wrapPlayer(event.getPlayer());
         get(player).initialize(player);
-        WorldGuard.getInstance().getExecutorService().submit(() ->
-            WorldGuard.getInstance().getProfileCache().put(new Profile(player.getUniqueId(), player.getName())));
     }
 
     @Override

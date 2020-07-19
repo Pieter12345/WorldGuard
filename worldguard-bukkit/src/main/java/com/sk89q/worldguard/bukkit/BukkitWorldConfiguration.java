@@ -105,6 +105,13 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
 
         if (inputs == null || inputs.isEmpty()) {
             parentConfig.setProperty(node, new ArrayList<String>());
+        }
+
+        if (config.getProperty(node) != null) {
+            inputs = config.getStringList(node, null);
+        }
+
+        if (inputs == null || inputs.isEmpty()) {
             return set;
         }
 
@@ -144,6 +151,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         allowAllInteract = getTargetMatchers("event-handling.interaction-whitelist");
         blockUseAtFeet = getTargetMatchers("event-handling.emit-block-use-at-feet");
         ignoreHopperMoveEvents = getBoolean("event-handling.ignore-hopper-item-move-events", false);
+        breakDeniedHoppers = getBoolean("event-handling.break-hoppers-on-denied-move", true);
 
         usePaperEntityOrigin = getBoolean("regions.use-paper-entity-origin", false);
 
@@ -251,6 +259,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         disableVineGrowth = getBoolean("dynamics.disable-vine-growth", false);
         disableCropGrowth = getBoolean("dynamics.disable-crop-growth", false);
         disableSoilDehydration = getBoolean("dynamics.disable-soil-dehydration", false);
+        disableCoralBlockFade = getBoolean("dynamics.disable-coral-block-fade", false);
         allowedSnowFallOver = new HashSet<>(convertLegacyBlocks(getStringList("dynamics.snow-fall-blocks", null)));
 
         useRegions = getBoolean("regions.enable", true);
