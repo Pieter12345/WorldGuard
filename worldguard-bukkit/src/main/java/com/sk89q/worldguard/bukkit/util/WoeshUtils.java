@@ -23,6 +23,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.UUID;
 
 import org.bukkit.entity.Player;
 
@@ -44,6 +45,7 @@ public abstract class WoeshUtils {
     private static Constructor<?> packetPlayOutChatConstructor;
     private static Method sendPacketMethod = null;
     private static Object chatMessageTypeObj; // This can be (byte) 2 for MC versions prior to 1.12 or ChatMessageType.GAME_INFO for versions after 1.12.
+    private static UUID uuid = null;
 
     /**
      * sendActionBarMessage method.
@@ -91,12 +93,22 @@ public abstract class WoeshUtils {
                 Class<?> iChatBaseComponentClass = Class.forName(nmsPrefix + "IChatBaseComponent");
                 Class<?> packetPlayOutChatClass = Class.forName(nmsPrefix + "PacketPlayOutChat");
                 try {
-                    packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, byte.class);
-                    chatMessageTypeObj = (byte) 2;
-                } catch (NoSuchMethodException e) {
+                    // Since MC 1.16.
                     Class<?> chatMessageTypeClass = Class.forName(nmsPrefix + "ChatMessageType");
-                    packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, chatMessageTypeClass);
+                    packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, chatMessageTypeClass, UUID.class);
                     chatMessageTypeObj = chatMessageTypeClass.getField("GAME_INFO").get(null);
+                    uuid = new UUID(0L, 0L);
+                } catch (NoSuchMethodException e) {
+                    try {
+                        // From MC 1.?? to MC 1.15.2.
+                        Class<?> chatMessageTypeClass = Class.forName(nmsPrefix + "ChatMessageType");
+                        packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, chatMessageTypeClass);
+                        chatMessageTypeObj = chatMessageTypeClass.getField("GAME_INFO").get(null);
+                    } catch (NoSuchMethodException e2) {
+                        // From MC 1.?? to MC 1.??.
+                        packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, byte.class);
+                        chatMessageTypeObj = (byte) 2;
+                    }
                 }
 
                 // Get the sendPacket method.
@@ -119,7 +131,9 @@ public abstract class WoeshUtils {
             }
 
             // Construct the PacketPlayOutChat.
-            Object packetPlayOutObj = packetPlayOutChatConstructor.newInstance(iChatBaseComponentObj, chatMessageTypeObj);
+            Object packetPlayOutObj = (uuid == null
+                    ? packetPlayOutChatConstructor.newInstance(iChatBaseComponentObj, chatMessageTypeObj)
+                    : packetPlayOutChatConstructor.newInstance(iChatBaseComponentObj, chatMessageTypeObj, uuid));
 
             // Send the packet.
             sendPacketMethod.invoke(playerConnectionObj, packetPlayOutObj);
