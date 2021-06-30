@@ -75,7 +75,7 @@ public abstract class AbstractSessionManager implements SessionManager {
     private boolean hasCustom = false;
     private List<Handler.Factory<? extends Handler>> handlers = new LinkedList<>();
 
-    private static final List<Handler.Factory<? extends Handler>> defaultHandlers = new LinkedList<>();
+    public static final List<Handler.Factory<? extends Handler>> defaultHandlers = new LinkedList<>(); // WoeshEdit - private -> public.
 
     static {
         Handler.Factory<?>[] factories = {
