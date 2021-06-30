@@ -4,6 +4,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.UUID;
 
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -16,7 +17,7 @@ public abstract class WoeshUtils {
     private static boolean isCompatible = true;
     
     private static Method getHandleMethod;
-    private static Field playerConnectionField;
+    private static Field connectionField;
     private static Method aMethod;
     private static Constructor<?> packetPlayOutChatConstructor;
     private static Method sendPacketMethod = null;
@@ -27,7 +28,7 @@ public abstract class WoeshUtils {
      * Shows the message above the action bar of the given player. The message is sent through a direct Packet using NMS code.
      * @param player
      * @param message
-     * @return True on success, false if something went wrong in the NMS code.
+     * @return {@code true} on success, {@code false} if something went wrong in the NMS code.
      */
     public static boolean sendActionBarMessage(LocalPlayer player, String message) {
         return player instanceof BukkitPlayer && sendActionBarMessage(((BukkitPlayer) player).getPlayer(), message);
@@ -38,10 +39,9 @@ public abstract class WoeshUtils {
      * Shows the message above the action bar of the given player. The message is sent through a direct Packet using NMS code.
      * @param player
      * @param message
-     * @return True on success, false if something went wrong in the NMS code.
+     * @return {@code true} on success, {@code false} if something went wrong in the NMS code.
      */
     public static boolean sendActionBarMessage(Player player, String message) {
-    	System.out.println("[DEBUG] WoeshUtils - Sending WorldGuard action bar message: " + message);
         if(!isCompatible) {
             return false; // Errors won't disappear, let's just accept our loss.
         }
@@ -54,31 +54,26 @@ public abstract class WoeshUtils {
                 getHandleMethod = player.getClass().getDeclaredMethod("getHandle");
                 Object nmsPlayerObj = getHandleMethod.invoke(player);
                 
-                // Get the EntityPlayer.playerConnection.
-                playerConnectionField = nmsPlayerObj.getClass().getDeclaredField("playerConnection");
-                Object playerConnectionObj = playerConnectionField.get(nmsPlayerObj);
-                
-                // Get the NMS prefix (net.minecraft.vX_XX_RX.).
-                String nmsPrefix = nmsPlayerObj.getClass().getName().substring(0, nmsPlayerObj.getClass().getName().length() - nmsPlayerObj.getClass().getSimpleName().length());
+                // Get the EntityPlayer.connection.
+                connectionField = nmsPlayerObj.getClass().getDeclaredField("connection");
+                Object playerConnectionObj = connectionField.get(nmsPlayerObj);
                 
                 // Get the IChatBaseComponent message creation Method.
-                Class<?> chatSerializerClass = Class.forName(nmsPrefix + "IChatBaseComponent$ChatSerializer");
+                Class<?> chatSerializerClass = Class.forName(
+                		"net.minecraft.network.chat.IChatBaseComponent$ChatSerializer");
                 aMethod = chatSerializerClass.getDeclaredMethod("a", String.class);
                 
                 // Get the PacketPlayOutChat Constructor.
-                Class<?> iChatBaseComponentClass = Class.forName(nmsPrefix + "IChatBaseComponent");
-                Class<?> packetPlayOutChatClass = Class.forName(nmsPrefix + "PacketPlayOutChat");
-                try {
-                    packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, byte.class);
-                    chatMessageTypeObj = (byte) 2;
-                } catch (NoSuchMethodException e) {
-                    Class<?> chatMessageTypeClass = Class.forName(nmsPrefix + "ChatMessageType");
-                    packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(iChatBaseComponentClass, chatMessageTypeClass);
-                    chatMessageTypeObj = chatMessageTypeClass.getField("GAME_INFO").get(null);
-                }
+                Class<?> iChatBaseComponentClass = Class.forName("net.minecraft.network.chat.IChatBaseComponent");
+                Class<?> packetPlayOutChatClass = Class.forName(
+                		"net.minecraft.network.protocol.game.PacketPlayOutChat");
+                Class<?> chatMessageTypeClass = Class.forName("net.minecraft.network.chat.ChatMessageType");
+                packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(
+                		iChatBaseComponentClass, chatMessageTypeClass, UUID.class);
+                chatMessageTypeObj = chatMessageTypeClass.getField("GAME_INFO").get(null);
                 
                 // Get the sendPacket method.
-                Class<?> packetClass = Class.forName(nmsPrefix + "Packet");
+                Class<?> packetClass = Class.forName("net.minecraft.network.protocol.Packet");
                 sendPacketMethod = playerConnectionObj.getClass().getDeclaredMethod("sendPacket", packetClass);
             }
             
@@ -86,18 +81,20 @@ public abstract class WoeshUtils {
             Object nmsPlayerObj = getHandleMethod.invoke(player);
             
             // Get the EntityPlayer.playerConnection.
-            Object playerConnectionObj = playerConnectionField.get(nmsPlayerObj);
+            Object playerConnectionObj = connectionField.get(nmsPlayerObj);
             
             // Construct the IChatBaseComponent object (message).
             Object iChatBaseComponentObj;
             try {
-                iChatBaseComponentObj = aMethod.invoke(null, "{\"text\": \"" + message.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}");
+                iChatBaseComponentObj = aMethod.invoke(null,
+                		"{\"text\": \"" + message.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}");
             } catch(InvocationTargetException e) {
                 return false; // Invalid JSON format.
             }
             
             // Construct the PacketPlayOutChat.
-            Object packetPlayOutObj = packetPlayOutChatConstructor.newInstance(iChatBaseComponentObj, chatMessageTypeObj);
+            Object packetPlayOutObj = packetPlayOutChatConstructor.newInstance(
+            		iChatBaseComponentObj, chatMessageTypeObj, new UUID(0, 0));
             
             // Send the packet.
             sendPacketMethod.invoke(playerConnectionObj, packetPlayOutObj);
