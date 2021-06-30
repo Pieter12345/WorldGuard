@@ -178,6 +178,12 @@ public class TestPlayer extends AbstractPlayerActor implements LocalPlayer {
 
     }
 
+    // WoeshEdit - Add method.
+    @Override
+    public boolean sendActionbarMessage(String msg) {
+        return true;
+    }
+
     @Override
     public void resetFallDistance() {
 

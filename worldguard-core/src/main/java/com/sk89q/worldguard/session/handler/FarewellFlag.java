@@ -65,7 +65,10 @@ public class FarewellFlag extends Handler {
     public boolean onCrossBoundary(LocalPlayer player, Location from, Location to, ApplicableRegionSet toSet,
                                    Set<ProtectedRegion> entered, Set<ProtectedRegion> exited, MoveType moveType) {
 
-        lastMessageStack = collectAndSend(player, toSet, Flags.FAREWELL_MESSAGE, lastMessageStack, MessagingUtil::sendStringToChat);
+        // WoeshEdit - Send message to actionbar instead of chat.
+//        lastMessageStack = collectAndSend(player, toSet, Flags.FAREWELL_MESSAGE, lastMessageStack, MessagingUtil::sendStringToChat);
+        lastMessageStack = collectAndSend(player, toSet, Flags.FAREWELL_MESSAGE, lastMessageStack, MessagingUtil::sendStringToActionbar);
+        // WoeshEdit end.
         lastTitleStack = collectAndSend(player, toSet, Flags.FAREWELL_TITLE, lastTitleStack, MessagingUtil::sendStringToTitle);
 
         return true;
@@ -88,6 +91,7 @@ public class FarewellFlag extends Handler {
 
         for (String message : stack) {
             if (!messages.contains(message)) {
+                message = "&8[&7Plot&8]&r" + message; // WoeshEdit - Add plot prefix.
                 msgFunc.accept(player, message);
                 break;
             }
