@@ -1,4 +1,3 @@
-import org.cadixdev.gradle.licenser.LicenseExtension
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -27,12 +26,5 @@ fun Project.applyCommonConfiguration() {
         the<JavaPluginExtension>().toolchain {
             languageVersion.set(JavaLanguageVersion.of(16))
         }
-    }
-
-    apply(plugin = "org.cadixdev.licenser")
-    configure<LicenseExtension> {
-        header(rootProject.file("HEADER.txt"))
-        include("**/*.java")
-        include("**/*.kt")
     }
 }

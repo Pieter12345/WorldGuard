@@ -2,7 +2,6 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.Project
 import org.gradle.api.component.AdhocComponentWithVariants
 import org.gradle.api.plugins.JavaPluginExtension
-import org.gradle.api.plugins.quality.CheckstyleExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.javadoc.Javadoc
@@ -23,15 +22,9 @@ fun Project.applyPlatformAndCoreConfiguration() {
     apply(plugin = "eclipse")
     apply(plugin = "idea")
     apply(plugin = "maven-publish")
-    apply(plugin = "checkstyle")
     apply(plugin = "com.jfrog.artifactory")
 
     ext["internalVersion"] = "$version+${rootProject.ext["gitCommitHash"]}"
-
-    configure<CheckstyleExtension> {
-        configFile = rootProject.file("config/checkstyle/checkstyle.xml")
-        toolVersion = "8.34"
-    }
 
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
@@ -63,10 +56,6 @@ fun Project.applyPlatformAndCoreConfiguration() {
 
     if (name == "worldguard-core" || name == "worldguard-bukkit") {
         the<JavaPluginExtension>().withSourcesJar()
-    }
-
-    tasks.named("check").configure {
-        dependsOn("checkstyleMain", "checkstyleTest")
     }
 
     configure<PublishingExtension> {
