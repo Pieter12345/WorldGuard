@@ -181,6 +181,12 @@ public class BukkitPlayer extends com.sk89q.worldedit.bukkit.BukkitPlayer implem
         }
     }
 
+    // WoeshEdit - Add method.
+    @Override
+    public boolean sendActionbarMessage(String msg) {
+        return woesh.utils.WoeshUtils.sendActionBarMessage(this.getPlayer(), msg);
+    }
+
     @Override
     public void resetFallDistance() {
         getPlayer().setFallDistance(0);

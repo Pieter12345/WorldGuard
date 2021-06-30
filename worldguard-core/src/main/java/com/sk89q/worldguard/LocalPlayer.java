@@ -208,6 +208,14 @@ public interface LocalPlayer extends Player, RegionAssociable {
     @Beta
     void sendTitle(String title, String subtitle);
 
+    // WoeshEdit - Add method.
+    /**
+     * Sends an action bar message to the player.
+     * @param msg - The message.
+     * @return {@code true} if sending has succeeded, {@code false} otherwise.
+     */
+    boolean sendActionbarMessage(String msg);
+
     /**
      * Clears fall distance.
      */

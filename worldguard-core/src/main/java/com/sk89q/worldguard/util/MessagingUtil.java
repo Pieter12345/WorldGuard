@@ -49,4 +49,15 @@ public final class MessagingUtil {
         }
     }
 
+    // WoeshEdit - Add method.
+    public static void sendStringToActionbar(LocalPlayer player, String message) {
+        String effective = CommandUtils.replaceColorMacros(message);
+        effective = WorldGuard.getInstance().getPlatform().getMatcher().replaceMacros(player, effective);
+        final String finalMessage = effective.replaceAll("\\\\n", "\n");
+        if (!player.sendActionbarMessage(finalMessage)) {
+            for (String mess : finalMessage.split("\\n")) {
+                player.printRaw(mess);
+            }
+        }
+    }
 }
