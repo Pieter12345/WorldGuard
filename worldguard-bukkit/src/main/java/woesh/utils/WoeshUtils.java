@@ -18,10 +18,10 @@ public abstract class WoeshUtils {
     
     private static Method getHandleMethod;
     private static Field connectionField;
-    private static Method aMethod;
+    private static Constructor<?> chatComponentTextConstructor;
     private static Constructor<?> packetPlayOutChatConstructor;
     private static Method sendPacketMethod = null;
-    private static Object chatMessageTypeObj; // This can be (byte) 2 for MC versions prior to 1.12 or ChatMessageType.GAME_INFO for versions after 1.12.
+    private static Object chatMessageTypeObj;
     
     /**
      * sendActionBarMessage method.
@@ -49,19 +49,18 @@ public abstract class WoeshUtils {
             
             // Initialize reflection objects (only runs once if successful).
             if(sendPacketMethod == null) {
-            
+                
                 // Get the NMS EntityPlayer.
                 getHandleMethod = player.getClass().getDeclaredMethod("getHandle");
                 Object nmsPlayerObj = getHandleMethod.invoke(player);
                 
                 // Get the EntityPlayer.connection.
-                connectionField = nmsPlayerObj.getClass().getDeclaredField("connection");
+                connectionField = nmsPlayerObj.getClass().getDeclaredField("b"); // PlayerConnection connection.
                 Object playerConnectionObj = connectionField.get(nmsPlayerObj);
                 
-                // Get the IChatBaseComponent message creation Method.
-                Class<?> chatSerializerClass = Class.forName(
-                		"net.minecraft.network.chat.IChatBaseComponent$ChatSerializer");
-                aMethod = chatSerializerClass.getDeclaredMethod("a", String.class);
+                // Get the ChatComponentText constructor.
+                Class<?> chatComponentTextClass = Class.forName("net.minecraft.network.chat.ChatComponentText");
+                chatComponentTextConstructor = chatComponentTextClass.getDeclaredConstructor(String.class);
                 
                 // Get the PacketPlayOutChat Constructor.
                 Class<?> iChatBaseComponentClass = Class.forName("net.minecraft.network.chat.IChatBaseComponent");
@@ -70,11 +69,12 @@ public abstract class WoeshUtils {
                 Class<?> chatMessageTypeClass = Class.forName("net.minecraft.network.chat.ChatMessageType");
                 packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(
                 		iChatBaseComponentClass, chatMessageTypeClass, UUID.class);
-                chatMessageTypeObj = chatMessageTypeClass.getField("GAME_INFO").get(null);
+                chatMessageTypeObj = chatMessageTypeClass.getField("c").get(null); // GAME_INFO.
                 
                 // Get the sendPacket method.
                 Class<?> packetClass = Class.forName("net.minecraft.network.protocol.Packet");
-                sendPacketMethod = playerConnectionObj.getClass().getDeclaredMethod("sendPacket", packetClass);
+                sendPacketMethod = playerConnectionObj.getClass()
+                		.getDeclaredMethod("a", packetClass); // MC 1.18.1: send, MC 1.17.1: sendPacket.
             }
             
             // Get the NMS EntityPlayer.
@@ -83,14 +83,8 @@ public abstract class WoeshUtils {
             // Get the EntityPlayer.playerConnection.
             Object playerConnectionObj = connectionField.get(nmsPlayerObj);
             
-            // Construct the IChatBaseComponent object (message).
-            Object iChatBaseComponentObj;
-            try {
-                iChatBaseComponentObj = aMethod.invoke(null,
-                		"{\"text\": \"" + message.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}");
-            } catch(InvocationTargetException e) {
-                return false; // Invalid JSON format.
-            }
+            // Construct the message object.
+            Object iChatBaseComponentObj = chatComponentTextConstructor.newInstance(message);
             
             // Construct the PacketPlayOutChat.
             Object packetPlayOutObj = packetPlayOutChatConstructor.newInstance(
@@ -101,8 +95,10 @@ public abstract class WoeshUtils {
             return true;
             
         } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-                | IllegalArgumentException | InvocationTargetException | NoSuchFieldException | ClassNotFoundException | InstantiationException e) {
-            System.out.println("[DEBUG] [" + WoeshUtils.class.getName() + "] An Exception occured while running NMS code to send an above-actionbar message. Here's the stacktrace:\n");
+                | IllegalArgumentException | InvocationTargetException
+                | NoSuchFieldException | ClassNotFoundException | InstantiationException e) {
+            System.out.println("[DEBUG] [" + WoeshUtils.class.getName() + "] An Exception occured while running NMS"
+            		+ " code to send an above-actionbar message. Here's the stacktrace:\n");
             e.printStackTrace();
             isCompatible = false;
             return false;
