@@ -2,7 +2,6 @@ package woesh.utils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
@@ -14,14 +13,8 @@ import com.sk89q.worldguard.bukkit.BukkitPlayer;
 
 public abstract class WoeshUtils {
     
+    private static ActionBarMessager actionBarMessager = null;
     private static boolean isCompatible = true;
-    
-    private static Method getHandleMethod;
-    private static Field connectionField;
-    private static Constructor<?> chatComponentTextConstructor;
-    private static Constructor<?> packetPlayOutChatConstructor;
-    private static Method sendPacketMethod = null;
-    private static Object chatMessageTypeObj;
     
     /**
      * sendActionBarMessage method.
@@ -45,60 +38,33 @@ public abstract class WoeshUtils {
         if(!isCompatible) {
             return false; // Errors won't disappear, let's just accept our loss.
         }
-        try {
-            
-            // Initialize reflection objects (only runs once if successful).
-            if(sendPacketMethod == null) {
-                
-                // Get the NMS EntityPlayer.
-                getHandleMethod = player.getClass().getDeclaredMethod("getHandle");
-                Object nmsPlayerObj = getHandleMethod.invoke(player);
-                
-                // Get the EntityPlayer.connection.
-                connectionField = nmsPlayerObj.getClass().getDeclaredField("b"); // PlayerConnection connection.
-                Object playerConnectionObj = connectionField.get(nmsPlayerObj);
-                
-                // Get the ChatComponentText constructor.
-                Class<?> chatComponentTextClass = Class.forName("net.minecraft.network.chat.ChatComponentText");
-                chatComponentTextConstructor = chatComponentTextClass.getDeclaredConstructor(String.class);
-                
-                // Get the PacketPlayOutChat Constructor.
-                Class<?> iChatBaseComponentClass = Class.forName("net.minecraft.network.chat.IChatBaseComponent");
-                Class<?> packetPlayOutChatClass = Class.forName(
-                		"net.minecraft.network.protocol.game.PacketPlayOutChat");
-                Class<?> chatMessageTypeClass = Class.forName("net.minecraft.network.chat.ChatMessageType");
-                packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(
-                		iChatBaseComponentClass, chatMessageTypeClass, UUID.class);
-                chatMessageTypeObj = chatMessageTypeClass.getField("c").get(null); // GAME_INFO.
-                
-                // Get the sendPacket method.
-                Class<?> packetClass = Class.forName("net.minecraft.network.protocol.Packet");
-                sendPacketMethod = playerConnectionObj.getClass()
-                		.getDeclaredMethod("a", packetClass); // MC 1.18.1: send, MC 1.17.1: sendPacket.
+        if(actionBarMessager == null) {
+            ActionBarMessager messager = new ActionBarMessager_MC_1_18_minus();
+            try {
+                messager.sendActionBarMessage(player, message);
+                actionBarMessager = messager;
+                return true;
+            } catch (Exception e) {
             }
-            
-            // Get the NMS EntityPlayer.
-            Object nmsPlayerObj = getHandleMethod.invoke(player);
-            
-            // Get the EntityPlayer.playerConnection.
-            Object playerConnectionObj = connectionField.get(nmsPlayerObj);
-            
-            // Construct the message object.
-            Object iChatBaseComponentObj = chatComponentTextConstructor.newInstance(message);
-            
-            // Construct the PacketPlayOutChat.
-            Object packetPlayOutObj = packetPlayOutChatConstructor.newInstance(
-            		iChatBaseComponentObj, chatMessageTypeObj, new UUID(0, 0));
-            
-            // Send the packet.
-            sendPacketMethod.invoke(playerConnectionObj, packetPlayOutObj);
+            messager = new ActionBarMessager_MC_1_19();
+            try {
+                messager.sendActionBarMessage(player, message);
+                actionBarMessager = messager;
+                return true;
+            } catch (Exception e) {
+                System.out.println("[DEBUG] [" + WoeshUtils.class.getName() + "] An Exception occured while running NMS"
+                        + " code to send an above-actionbar message. Here's the stacktrace:\n");
+                e.printStackTrace();
+                isCompatible = false;
+                return false;
+            }
+        }
+        try {
+            actionBarMessager.sendActionBarMessage(player, message);
             return true;
-            
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-                | IllegalArgumentException | InvocationTargetException
-                | NoSuchFieldException | ClassNotFoundException | InstantiationException e) {
+        } catch (Exception e) {
             System.out.println("[DEBUG] [" + WoeshUtils.class.getName() + "] An Exception occured while running NMS"
-            		+ " code to send an above-actionbar message. Here's the stacktrace:\n");
+                    + " code to send an above-actionbar message after initialization. Here's the stacktrace:\n");
             e.printStackTrace();
             isCompatible = false;
             return false;
@@ -173,5 +139,123 @@ public abstract class WoeshUtils {
             }
         }
         return str;
+    }
+    
+    public static interface ActionBarMessager {
+        public void sendActionBarMessage(Player player, String message) throws Exception;
+    }
+    
+    public static class ActionBarMessager_MC_1_18_minus implements ActionBarMessager {
+        
+        private static Method getHandleMethod;
+        private static Field connectionField;
+        private static Constructor<?> chatComponentTextConstructor;
+        private static Constructor<?> packetPlayOutChatConstructor;
+        private static Method sendPacketMethod = null;
+        private static Object chatMessageTypeObj;
+        
+        @Override
+        public void sendActionBarMessage(Player player, String message) throws Exception {
+            
+            // Initialize reflection objects (only runs once if successful).
+            if(sendPacketMethod == null) {
+                
+                // Get the NMS EntityPlayer.
+                getHandleMethod = player.getClass().getDeclaredMethod("getHandle");
+                Object nmsPlayerObj = getHandleMethod.invoke(player);
+                
+                // Get the EntityPlayer.connection.
+                connectionField = nmsPlayerObj.getClass().getDeclaredField("b"); // PlayerConnection connection.
+                Object playerConnectionObj = connectionField.get(nmsPlayerObj);
+                
+                // Get the ChatComponentText constructor.
+                Class<?> chatComponentTextClass = Class.forName("net.minecraft.network.chat.ChatComponentText");
+                chatComponentTextConstructor = chatComponentTextClass.getDeclaredConstructor(String.class);
+                
+                // Get the PacketPlayOutChat Constructor.
+                Class<?> iChatBaseComponentClass = Class.forName("net.minecraft.network.chat.IChatBaseComponent");
+                Class<?> packetPlayOutChatClass = Class.forName(
+                        "net.minecraft.network.protocol.game.PacketPlayOutChat");
+                Class<?> chatMessageTypeClass = Class.forName("net.minecraft.network.chat.ChatMessageType");
+                packetPlayOutChatConstructor = packetPlayOutChatClass.getDeclaredConstructor(
+                        iChatBaseComponentClass, chatMessageTypeClass, UUID.class);
+                chatMessageTypeObj = chatMessageTypeClass.getField("c").get(null); // GAME_INFO.
+                
+                // Get the sendPacket method.
+                Class<?> packetClass = Class.forName("net.minecraft.network.protocol.Packet");
+                sendPacketMethod = playerConnectionObj.getClass()
+                        .getDeclaredMethod("a", packetClass); // MC 1.18.1: send, MC 1.17.1: sendPacket.
+            }
+            
+            // Get the NMS EntityPlayer.
+            Object nmsPlayerObj = getHandleMethod.invoke(player);
+            
+            // Get the EntityPlayer.playerConnection.
+            Object playerConnectionObj = connectionField.get(nmsPlayerObj);
+            
+            // Construct the message object.
+            Object iChatBaseComponentObj = chatComponentTextConstructor.newInstance(message);
+            
+            // Construct the PacketPlayOutChat.
+            Object packetPlayOutObj = packetPlayOutChatConstructor.newInstance(
+                    iChatBaseComponentObj, chatMessageTypeObj, new UUID(0, 0));
+            
+            // Send the packet.
+            sendPacketMethod.invoke(playerConnectionObj, packetPlayOutObj);
+        }
+    }
+    
+    public static class ActionBarMessager_MC_1_19 implements ActionBarMessager {
+        
+        private static Method getHandleMethod;
+        private static Field connectionField;
+        private static Method iChatBaseComponentLiteralMethod;
+        private static Constructor<?> clientboundSetActionBarTextPacketConstructor;
+        private static Method sendPacketMethod = null;
+        
+        @Override
+        public void sendActionBarMessage(Player player, String message) throws Exception {
+            
+            // Initialize reflection objects (only runs once if successful).
+            if(sendPacketMethod == null) {
+                
+                // Get the NMS EntityPlayer.
+                getHandleMethod = player.getClass().getDeclaredMethod("getHandle");
+                Object nmsPlayerObj = getHandleMethod.invoke(player);
+                
+                // Get the EntityPlayer.connection.
+                connectionField = nmsPlayerObj.getClass().getDeclaredField("b"); // PlayerConnection connection.
+                Object playerConnectionObj = connectionField.get(nmsPlayerObj);
+                
+                // Get the IChatBaseComponent.literal(String) method.
+                Class<?> iChatBaseComponentClass = Class.forName("net.minecraft.network.chat.IChatBaseComponent");
+                iChatBaseComponentLiteralMethod = iChatBaseComponentClass.getDeclaredMethod("b", String.class);
+                
+                // Get the ClientboundSetActionBarTextPacket constructor.
+                clientboundSetActionBarTextPacketConstructor = Class.forName(
+                        "net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket")
+                        .getDeclaredConstructor(iChatBaseComponentClass);
+                
+                // Get the sendPacket method.
+                Class<?> packetClass = Class.forName("net.minecraft.network.protocol.Packet");
+                sendPacketMethod = playerConnectionObj.getClass()
+                        .getDeclaredMethod("a", packetClass); // MC 1.19: send.
+            }
+            
+            // Get the NMS EntityPlayer.
+            Object nmsPlayerObj = getHandleMethod.invoke(player);
+            
+            // Get the EntityPlayer.connection.
+            Object playerConnectionObj = connectionField.get(nmsPlayerObj);
+            
+            // Construct the message object.
+            Object iChatBaseComponentObj = iChatBaseComponentLiteralMethod.invoke(null, message);
+            
+            // Construct the ClientboundSetActionBarTextPacket.
+            Object packetPlayOutObj = clientboundSetActionBarTextPacketConstructor.newInstance(iChatBaseComponentObj);
+            
+            // Send the packet.
+            sendPacketMethod.invoke(playerConnectionObj, packetPlayOutObj);
+        }
     }
 }
