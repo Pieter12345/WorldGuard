@@ -39,13 +39,16 @@ public abstract class WoeshUtils {
             return false; // Errors won't disappear, let's just accept our loss.
         }
         if(actionBarMessager == null) {
-            ActionBarMessager messager = new ActionBarMessager_MC_1_18_minus();
+            ActionBarMessager messager;
+            
+            messager = new ActionBarMessager_MC_1_20_1();
             try {
                 messager.sendActionBarMessage(player, message);
                 actionBarMessager = messager;
                 return true;
             } catch (Exception e) {
             }
+            
             messager = new ActionBarMessager_MC_1_19();
             try {
                 messager.sendActionBarMessage(player, message);
@@ -53,7 +56,8 @@ public abstract class WoeshUtils {
                 return true;
             } catch (Exception e) {
             }
-            messager = new ActionBarMessager_MC_1_20_1();
+            
+            messager = new ActionBarMessager_MC_1_18_minus();
             try {
                 messager.sendActionBarMessage(player, message);
                 actionBarMessager = messager;
