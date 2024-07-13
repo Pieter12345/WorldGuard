@@ -11,6 +11,9 @@ import org.bukkit.entity.Player;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.bukkit.BukkitPlayer;
 
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
+
 public abstract class WoeshUtils {
     
     private static ActionBarMessager actionBarMessager = null;
@@ -40,6 +43,14 @@ public abstract class WoeshUtils {
         }
         if(actionBarMessager == null) {
             ActionBarMessager messager;
+            
+            messager = new ActionBarMessager_MC_1_21();
+            try {
+                messager.sendActionBarMessage(player, message);
+                actionBarMessager = messager;
+                return true;
+            } catch (Throwable e) {
+            }
             
             messager = new ActionBarMessager_MC_1_20_1();
             try {
@@ -321,6 +332,14 @@ public abstract class WoeshUtils {
             
             // Send the packet.
             sendPacketMethod.invoke(playerConnectionObj, packetPlayOutObj);
+        }
+    }
+    
+    public static class ActionBarMessager_MC_1_21 implements ActionBarMessager {
+        
+        @Override
+        public void sendActionBarMessage(Player player, String message) throws Exception {
+        	player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
         }
     }
 }
