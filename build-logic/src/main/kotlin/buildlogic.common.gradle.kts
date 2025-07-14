@@ -3,7 +3,6 @@ import buildlogic.stringyLibs
 import org.gradle.plugins.ide.idea.model.IdeaModel
 
 plugins {
-    id("org.cadixdev.licenser")
 }
 
 group = rootProject.group
@@ -54,12 +53,6 @@ dependencies {
             }
         }
     }
-}
-
-license {
-    header(rootProject.file("HEADER.txt"))
-    include("**/*.java")
-    include("**/*.kt")
 }
 
 plugins.withId("idea") {
